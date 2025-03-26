@@ -1,7 +1,7 @@
 embeddings_model: multi-qa-mpnet-base-cos-v1
 num_articles: 7
-ollama_api_url: http://10.0.1.63:11434
+ollama_api_url: http://localhost:11434
 selected_collections:
 - paxlo_fda_txt
 selected_llm: llama3.1:8b
-selected_template: Scared guy
+selected_template: default
