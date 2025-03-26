@@ -38,7 +38,7 @@ This may take a few minutes depending on your internet connection.
 1. Clone this repository
 ```bash
 git clone https://github.com/etanlightstone/domino_llm_playground.git
-cd llm-playground
+cd domino_llm_playground
 ```
 
 2. Install the required dependencies
