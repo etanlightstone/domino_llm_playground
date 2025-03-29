@@ -74,6 +74,21 @@ ollama_api_url: 'http://your-remote-server:11434'
    - "What is the recommended dosage?"
    - "Explain the clinical trial results"
 
+## Command-Line Version
+
+If you prefer a text-based interface instead of the Streamlit web application, you can use the command-line version:
+
+```bash
+python llm_play_commandline.py --model llama3.1:8b --doc paxlo_fda.txt
+```
+
+### Command-Line Options:
+
+- `--model`: Specifies which LLM model to use (must be available in Ollama)
+- `--doc`: Path to the document you want to process and query
+
+The command-line version uses the same settings from `config/llm_playground.yaml` for the template, embeddings model, and other configurations. Type 'exit' or 'quit' to end the conversation.
+
 ## Troubleshooting
 
 If you encounter issues:

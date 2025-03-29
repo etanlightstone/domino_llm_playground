@@ -2,5 +2,5 @@ embeddings_model: multi-qa-mpnet-base-cos-v1
 num_articles: 7
 ollama_api_url: http://localhost:11434
 selected_collections: []
-selected_llm: llama3.1:8b
+selected_llm: gemma3:1b
 selected_template: default

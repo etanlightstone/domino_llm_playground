@@ -69,7 +69,7 @@ class TemplateManager:
         """Get a template by its name."""
         templates = self.list_templates()
         for template in templates:
-            if template['name'] == template_name:
+            if template['name'].lower() == template_name.lower():
                 return template
         return None
     
