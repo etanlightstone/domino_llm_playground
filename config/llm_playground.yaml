@@ -1,5 +1,5 @@
 embeddings_model: multi-qa-mpnet-base-cos-v1
-num_articles: 7
+num_articles: 3
 ollama_api_url: http://localhost:11434
 selected_collections: []
 selected_llm: gemma3:1b

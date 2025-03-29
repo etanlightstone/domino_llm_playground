@@ -89,29 +89,55 @@ def main():
     print(f"Using template: {template_name}")
     print(f"Available collections: {', '.join(collection_names)}")
     print("\nType 'exit' or 'quit' to end the conversation.")
+    print("Type 'chatreset' to reset the conversation and start a new search.")
+    
+    # Chat history tracking
+    chat_history = []
+    context = ""
     
     # Chat loop
     while True:
         # Get user query
         user_query = input("\nYour question: ")
         
-        # Check for exit command
+        # Check for commands
         if user_query.lower() in ['exit', 'quit']:
             break
+        elif user_query.lower() == 'chatreset':
+            chat_history = []
+            context = ""
+            print("Chat history has been reset. Ask a new question to search the database.")
+            continue
         
-        # Query the vector database for relevant content
-        n_results = settings.get('num_articles', 5)
-        results = chromadb_manager.query_database(user_query, from_collections=collection_names, n_results=n_results)
+        # Add user query to chat history
+        chat_history.append({"role": "user", "content": user_query})
         
-        # Create combined context from results
-        context = "\n\n".join(results)
+        # Query the vector database for relevant content only on first query or after reset
+        if not context:
+            n_results = settings.get('num_articles', 5)
+            results = chromadb_manager.query_database(user_query, from_collections=collection_names, n_results=n_results)
+            context = "\n\n".join(results)
         
-        # Format the prompt using the template
+        # Format the prompt using the template and chat history
         system_template = template.get('system_template')
         human_template = template.get('human_template')
         
+        # Create chat history text
+        chat_history_text = ""
+        if chat_history[:-1]:  # If there's previous chat history
+            chat_history_text = "Previous conversation:\n"
+            for msg in chat_history[:-1]:  # All messages except the current question
+                role = "Q: " if msg["role"] == "user" else "A: "
+                chat_history_text += f"{role}{msg['content']}\n\n"
+        
+        # Modify the system template to include chat history
+        if chat_history_text:
+            modified_system_template = f"{system_template}\n\n{chat_history_text}"
+        else:
+            modified_system_template = system_template
+        
         chat_prompt = ChatPromptTemplate.from_messages([
-            ("system", system_template),
+            ("system", modified_system_template),
             ("human", human_template)
         ])
         
@@ -124,6 +150,9 @@ def main():
         try:
             response = ollama_client.chat(selected_model, formatted_prompt)
             print(f"\nAI: {response}")
+            # Add AI response to chat history
+            chat_history.append({"role": "assistant", "content": response})
+
         except Exception as e:
             print(f"Error getting response: {e}")
 
