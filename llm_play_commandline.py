@@ -49,6 +49,9 @@ def main():
         selected_model = available_models[0]
         print(f"Using {selected_model} instead.")
     
+    # Initialize ChatOllama model
+    llm = ollama_client.get_langchain_ollama_model(selected_model)
+    
     # Initialize ChromaDB with embeddings model from settings
     embeddings_model = settings.get('embeddings_model', 'multi-qa-mpnet-base-cos-v1')
     chromadb_manager = ChromaDBManager(embeddings_model_name=embeddings_model)
@@ -93,6 +96,7 @@ def main():
     
     # Chat history tracking
     chat_history = []
+    langchain_messages = []
     context = ""
     
     # Chat loop
@@ -105,6 +109,7 @@ def main():
             break
         elif user_query.lower() == 'chatreset':
             chat_history = []
+            langchain_messages = []
             context = ""
             print("Chat history has been reset. Ask a new question to search the database.")
             continue
@@ -117,41 +122,62 @@ def main():
             n_results = settings.get('num_articles', 5)
             results = chromadb_manager.query_database(user_query, from_collections=collection_names, n_results=n_results)
             context = "\n\n".join(results)
-        
-        # Format the prompt using the template and chat history
-        system_template = template.get('system_template')
-        human_template = template.get('human_template')
-        
-        # Create chat history text
-        chat_history_text = ""
-        if chat_history[:-1]:  # If there's previous chat history
-            chat_history_text = "Previous conversation:\n"
-            for msg in chat_history[:-1]:  # All messages except the current question
-                role = "Q: " if msg["role"] == "user" else "A: "
-                chat_history_text += f"{role}{msg['content']}\n\n"
-        
-        # Modify the system template to include chat history
-        if chat_history_text:
-            modified_system_template = f"{system_template}\n\n{chat_history_text}"
+            
+            # Format the prompt using the template and chat history
+            system_template = template.get('system_template')
+            human_template = template.get('human_template')
+            
+            # Create chat history text
+            chat_history_text = ""
+            if chat_history[:-1]:  # If there's previous chat history
+                chat_history_text = "Previous conversation:\n"
+                for msg in chat_history[:-1]:  # All messages except the current question
+                    role = "Q: " if msg["role"] == "user" else "A: "
+                    chat_history_text += f"{role}{msg['content']}\n\n"
+            
+            # Modify the system template to include chat history
+            if chat_history_text:
+                modified_system_template = f"{system_template}\n\n{chat_history_text}"
+            else:
+                modified_system_template = system_template
+            
+            # Create messages for LangChain
+            chat_prompt = ChatPromptTemplate.from_messages([
+                ("system", modified_system_template),
+                ("human", human_template)
+            ])
+            
+            # Format the prompt with context and question
+            langchain_messages = chat_prompt.format_messages(
+                context=context,
+                question=user_query
+            )
         else:
-            modified_system_template = system_template
+            # For follow-up questions, add a new human message
+            human_template = template.get('human_template')
+            human_prompt = ChatPromptTemplate.from_messages([
+                ("human", human_template)
+            ])
+            
+            # Format with the question
+            new_message = human_prompt.format_messages(question=user_query)[0]
+            langchain_messages.append(new_message)
         
-        chat_prompt = ChatPromptTemplate.from_messages([
-            ("system", modified_system_template),
-            ("human", human_template)
-        ])
-        
-        formatted_prompt = chat_prompt.format(
-            context=context,
-            question=user_query
-        )
-        
-        # Get response from the LLM
+        # Get response from the LLM using LangChain
         try:
-            response = ollama_client.chat(selected_model, formatted_prompt)
-            print(f"\nAI: {response}")
+            # Use the ChatOllama model to get a response
+            response = llm.invoke(langchain_messages)
+            
+            # Extract the content from the response
+            response_content = response.content
+            
+            print(f"\nAI: {response_content}")
+            
             # Add AI response to chat history
-            chat_history.append({"role": "assistant", "content": response})
+            chat_history.append({"role": "assistant", "content": response_content})
+            
+            # Add AI response to LangChain messages for the next iteration
+            langchain_messages.append(response)
 
         except Exception as e:
             print(f"Error getting response: {e}")
